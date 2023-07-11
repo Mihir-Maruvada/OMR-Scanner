@@ -2,6 +2,7 @@ import org.opencv.core.*;
 import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -11,13 +12,21 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-public class RectDraw {
+
+public class CheckRectDraw {
+    private static final int FRAME_WIDTH = 800;
+    private static final int FRAME_HEIGHT = 600;
+    private static final int PAUSE_DURATION_MS = 300;
+
+    private static JFrame frame;
+    private static JPanel imagePanel;
+
     public static void main(String[] args) {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Loads the OpenCV library
 
         // Provide the input image file path
         String imagePath = "path/to/your/image.jpg";
-        imagePath = "C:\\Users\\mihir\\Desktop\\RightTiltCropped.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\BottomPhoto.jpg";
         // Load the image
         Mat image = Imgcodecs.imread(imagePath);
 
@@ -55,7 +64,7 @@ public class RectDraw {
         // Sort the regionRects list based on the updated compareTo method
         Collections.sort(regionRects);
 
-// Group and sort rectangles based on y-coordinate and x-coordinate within a range
+        // Group and sort rectangles based on y-coordinate and x-coordinate within a range
         List<List<CustomRect>> groupedRects = new ArrayList<>();
         List<CustomRect> currentGroup = new ArrayList<>();
         int prevY = Integer.MIN_VALUE;
@@ -79,21 +88,42 @@ public class RectDraw {
             prevY = rect.y;
         }
 
-// Sort the last group based on x-coordinate
+        // Sort the last group based on x-coordinate
         Collections.sort(currentGroup, Comparator.comparingInt(rectangle -> rectangle.x));
 
-// Add the last group to the groupedRects list
+        // Add the last group to the groupedRects list
         groupedRects.add(currentGroup);
 
-// Flatten the groupedRects list to get the final sorted order
+        // Flatten the groupedRects list to get the final sorted order
         List<CustomRect> sortedRects = groupedRects.stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
-// Draw rectangles based on the sortedRects list
+        // Create a JFrame to hold the scroll pane
+        frame = new JFrame();
+        frame.setLayout(new BorderLayout());
+        frame.setTitle("Filled Regions");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
+
+        // Create a JScrollPane to display the images
+        JScrollPane scrollPane = new JScrollPane();
+        frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
+
+        // Create a JPanel to hold the image labels
+        imagePanel = new JPanel();
+        imagePanel.setLayout(new FlowLayout());
+        scrollPane.setViewportView(imagePanel);
+
+        // Display the frame
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+
+        // Draw rectangles based on the sortedRects list
         Mat result = image.clone();
 
-        for (CustomRect rect : regionRects) {
+        for (CustomRect rect : sortedRects) {
             // Calculate filled percentage
             double filledPercentage = calculateFilledPercentage(rect, binary);
 
@@ -120,9 +150,16 @@ public class RectDraw {
             Point bottomRight = new Point(rect.x + rect.width, rect.y + rect.height);
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
 
+            // Display the result in the GUI
+            displayImage(result);
+
+            // Pause for a short duration
+            try {
+                Thread.sleep(PAUSE_DURATION_MS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-        // Display the result
-        displayImage(result, "Filled Regions");
     }
 
     private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2) {
@@ -163,33 +200,19 @@ public class RectDraw {
         return false;
     }
 
-
-    private static void displayImage(Mat image, String title) {
+    private static void displayImage(Mat image) {
         BufferedImage img = matToBufferedImage(image);
         ImageIcon icon = new ImageIcon(img);
         JLabel lbl = new JLabel();
         lbl.setIcon(icon);
 
-        // Create a JScrollPane and add the JLabel to it
-        JScrollPane scrollPane = new JScrollPane(lbl);
-        scrollPane.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
+        // Add the label to the image panel
+        imagePanel.removeAll();
+        imagePanel.add(lbl);
 
-        // Create a JFrame to hold the scroll pane
-        JFrame frame = new JFrame();
-        frame.setLayout(new BorderLayout());
-        frame.setTitle(title);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        // Add the scroll pane to the frame
-        frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
-
-        // Set the preferred size of the frame
-        frame.setPreferredSize(new Dimension(img.getWidth() + 20, img.getHeight() + 20));
-
-        // Pack and display the frame
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        // Update the scroll pane
+        frame.revalidate();
+        frame.repaint();
     }
 
     private static BufferedImage matToBufferedImage(Mat mat) {
@@ -206,7 +229,4 @@ public class RectDraw {
         return image;
     }
 }
-
-
-
 
