@@ -18,7 +18,8 @@ public class RectDraw {
 
         String imagePath = "path/to/your/image.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\RightTiltCropped.jpg";
-
+        imagePath = "C:\\Users\\mihir\\Desktop\\BottomPhoto.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\E25Reading.jpg";
         Mat image = Imgcodecs.imread(imagePath);
 
         Mat gray = new Mat();
@@ -96,7 +97,7 @@ public class RectDraw {
 
         Mat result = image.clone();
 
-        for (CustomRect rect : regionRects)
+        for (CustomRect rect : sortedRects)
         {
             double filledPercentage = calculateFilledPercentage(rect, binary);
             Scalar color;
