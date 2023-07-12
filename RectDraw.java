@@ -13,37 +13,41 @@ import java.util.List;
 import java.util.stream.Collectors;
 public class RectDraw {
     public static void main(String[] args) {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Loads the OpenCV library
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
-        // Provide the input image file path
+
         String imagePath = "path/to/your/image.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\RightTiltCropped.jpg";
-        // Load the image
+
         Mat image = Imgcodecs.imread(imagePath);
 
         Mat gray = new Mat();
-        Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY); //Convert the image to grey scale
 
         // Apply threshold to obtain binary image
         Mat binary = new Mat();
-        Imgproc.threshold(gray, binary, 0, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);
+        Imgproc.threshold(gray, binary, 0, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);//Now apply threshodl to the grey image to get the binary image
 
-        // Find contours of gray filled regions
+
         List<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
-        Imgproc.findContours(binary, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(binary, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE); //Now we find all the contours(we will filter them later).
 
-        // Filter out small contours and find the overall region
-        List<CustomRect> regionRects = new ArrayList<>();
+
+        List<CustomRect> regionRects = new ArrayList<>();//Custom Rect is my custom implementation of the OpenCV rect
         CustomRect overallRect = null;
 
-        for (MatOfPoint contour : contours) {
+        for (MatOfPoint contour : contours)
+        {
             Rect boundingRect = Imgproc.boundingRect(contour);
-            if ((boundingRect.area() > 750) && (boundingRect.area() < 3000)) {
-                if (overallRect == null) {
+            if ((boundingRect.area() > 750) && (boundingRect.area() < 3000)) //Filter out the contours by area
+            {
+                if (overallRect == null)
+                {
                     overallRect = new CustomRect(boundingRect.x, boundingRect.y, boundingRect.width, boundingRect.height);
                     regionRects.add(overallRect);
-                } else {
+                } else
+                {
                     CustomRect CustomRect = new CustomRect(boundingRect.x, boundingRect.y, boundingRect.width, boundingRect.height);
                     overallRect = unionRectangles(overallRect, CustomRect);
                     regionRects.add(CustomRect);
@@ -51,27 +55,26 @@ public class RectDraw {
             }
         }
 
-        // Sort the regionRects list based on the implemented compareTo method
-        // Sort the regionRects list based on the updated compareTo method
+        //Now sort the Rectangles first by y(to get the row) and then by x in that row(to get it in READING ORDER)
+        //We will use the y value of the prevous rectangle and the y value of the current rectangle and see if their differece is within a range
+        //This range will tell us that those rectangels are in the same row.
+        //SEE BELOW
         Collections.sort(regionRects);
 
-// Group and sort rectangles based on y-coordinate and x-coordinate within a range
+
         List<List<CustomRect>> groupedRects = new ArrayList<>();
         List<CustomRect> currentGroup = new ArrayList<>();
         int prevY = Integer.MIN_VALUE;
 
         for (CustomRect rect : regionRects) {
-            if (Math.abs(rect.y - prevY) <= 7) {
-                // Add the rectangle to the current group
+            if (Math.abs(rect.y - prevY) <= 7) //To draw the rectangles by row, we can set a range of the y value(in this case 7)
+            {
                 currentGroup.add(rect);
             } else {
-                // Sort the current group based on x-coordinate
-                Collections.sort(currentGroup, Comparator.comparingInt(rectangle -> rectangle.x));
+                Collections.sort(currentGroup, Comparator.comparingInt(rectangle -> rectangle.x));//Sort the current group list based on the x coordinate
 
-                // Add the current group to the groupedRects list
                 groupedRects.add(currentGroup);
 
-                // Start a new group with the current rectangle
                 currentGroup = new ArrayList<>();
                 currentGroup.add(rect);
             }
@@ -79,39 +82,38 @@ public class RectDraw {
             prevY = rect.y;
         }
 
-// Sort the last group based on x-coordinate
         Collections.sort(currentGroup, Comparator.comparingInt(rectangle -> rectangle.x));
 
-// Add the last group to the groupedRects list
+
         groupedRects.add(currentGroup);
 
-// Flatten the groupedRects list to get the final sorted order
+//Now we can flatten the grouped rects list to get the rectangles in their final sorted order
         List<CustomRect> sortedRects = groupedRects.stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
-// Draw rectangles based on the sortedRects list
+
+
         Mat result = image.clone();
 
-        for (CustomRect rect : regionRects) {
-            // Calculate filled percentage
+        for (CustomRect rect : regionRects)
+        {
             double filledPercentage = calculateFilledPercentage(rect, binary);
-
-            // Adjust color and check nesting based on filled percentage and length condition
             Scalar color;
-            if (filledPercentage >= 0.7) {
-                // Check if the rectangle is inside another rectangle and satisfies length condition
-                if (isInsideAnyRectangle(rect, regionRects, false) || rect.width <= rect.height) {
-                    continue;  // Skip drawing the red rectangle
+            if (filledPercentage >= 0.7) //This means that the rectangle and the bubble inside is filled.
+            {
+                if (isInsideAnyRectangle(rect, regionRects, false) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
+                {
+                    continue; //If either of these conditions are met then that means that we shouldn't draw this rectangle
                 } else {
-                    color = new Scalar(0, 0, 255);  // Red color
+                    color = new Scalar(0, 0, 255);//This sets the color to red(According to OpenCV's BGR)
                 }
             } else {
-                // Check if the rectangle is inside another rectangle and satisfies length condition
-                if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) {
-                    continue;  // Skip drawing the blue rectangle
+                if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
+                {
+                    continue;//If either of these conditions are met then that means that we shouldn't draw this rectangle
                 } else {
-                    color = new Scalar(255, 0, 0);  // Blue color
+                    color = new Scalar(255, 0, 0);//This sets the color to blue(ACCORDING TO OpenCV's BGR)
                 }
             }
 
@@ -121,11 +123,11 @@ public class RectDraw {
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
 
         }
-        // Display the result
         displayImage(result, "Filled Regions");
     }
 
-    private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2) {
+    private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2)
+    {
         int x = Math.min(rect1.x, rect2.x);
         int y = Math.min(rect1.y, rect2.y);
         int width = Math.max(rect1.x + rect1.width, rect2.x + rect2.width) - x;
@@ -133,7 +135,8 @@ public class RectDraw {
         return new CustomRect(x, y, width, height);
     }
 
-    private static double calculateFilledPercentage(CustomRect rect, Mat binaryImage) {
+    private static double calculateFilledPercentage(CustomRect rect, Mat binaryImage)
+    {
         int totalPixels = rect.width * rect.height;
         int whitePixels = 0;
 
@@ -149,7 +152,8 @@ public class RectDraw {
         return (double) whitePixels / totalPixels;
     }
 
-    private static boolean isInsideAnyRectangle(Rect rect, List<CustomRect> rectangles, boolean sameSize) {
+    private static boolean isInsideAnyRectangle(Rect rect, List<CustomRect> rectangles, boolean sameSize)
+    {
         for (CustomRect r : rectangles) {
             if (r.equals(rect)) {
                 continue;
@@ -164,37 +168,36 @@ public class RectDraw {
     }
 
 
-    private static void displayImage(Mat image, String title) {
+    private static void displayImage(Mat image, String title)
+    {
+        //Scroll pane is added to see the image in case it is too big
         BufferedImage img = matToBufferedImage(image);
         ImageIcon icon = new ImageIcon(img);
         JLabel lbl = new JLabel();
         lbl.setIcon(icon);
 
-        // Create a JScrollPane and add the JLabel to it
         JScrollPane scrollPane = new JScrollPane(lbl);
         scrollPane.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
 
-        // Create a JFrame to hold the scroll pane
         JFrame frame = new JFrame();
         frame.setLayout(new BorderLayout());
         frame.setTitle(title);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Add the scroll pane to the frame
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
 
-        // Set the preferred size of the frame
         frame.setPreferredSize(new Dimension(img.getWidth() + 20, img.getHeight() + 20));
 
-        // Pack and display the frame
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 
-    private static BufferedImage matToBufferedImage(Mat mat) {
+    private static BufferedImage matToBufferedImage(Mat mat)
+    {
         int type = BufferedImage.TYPE_BYTE_GRAY;
-        if (mat.channels() > 1) {
+        if (mat.channels() > 1)
+        {
             type = BufferedImage.TYPE_3BYTE_BGR;
         }
         int bufferSize = mat.channels() * mat.cols() * mat.rows();
