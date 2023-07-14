@@ -6,12 +6,16 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 public class RectDraw {
+    String csvPath = "C:\\Users\\mihir\\Documents\\CSV\\E25_KEY4.csv";
+    static ArrayList <String> key = new ArrayList<>();
     public static void main(String[] args) {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
@@ -96,7 +100,7 @@ public class RectDraw {
 
 
         Mat result = image.clone();
-
+        List<CustomRect> finalRects = new ArrayList<>();
         for (CustomRect rect : sortedRects)
         {
             double filledPercentage = calculateFilledPercentage(rect, binary);
@@ -107,14 +111,18 @@ public class RectDraw {
                 {
                     continue; //If either of these conditions are met then that means that we shouldn't draw this rectangle
                 } else {
+
                     color = new Scalar(0, 0, 255);//This sets the color to red(According to OpenCV's BGR)
+                    finalRects.add(new CustomRect(rect.x, rect.y, rect.width, rect.height, color));
                 }
             } else {
                 if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
                 {
                     continue;//If either of these conditions are met then that means that we shouldn't draw this rectangle
                 } else {
+
                     color = new Scalar(255, 0, 0);//This sets the color to blue(ACCORDING TO OpenCV's BGR)
+                    finalRects.add(new CustomRect(rect.x, rect.y, rect.width, rect.height, color));
                 }
             }
 
@@ -124,7 +132,204 @@ public class RectDraw {
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
 
         }
+        List<CustomRect> temp = new ArrayList<>();
+        ArrayList<String> input = new ArrayList<>();
+        ArrayList<String> finalInput = new ArrayList<>();
+        int startValue = 0;
+        int count = 0;
+        boolean isBubbled = false;
+        while(count < 40) {
+            for (int i = startValue; i < startValue + 4; i++) {
+                temp.add(finalRects.get(i)); //Add the set of 4 values to the temp list
+
+            }
+            for (int i = 0; i < temp.size(); i++)
+            {
+                //  System.out.print(i + " ");
+                if(isBubbleFilled(temp.get(i).color) == true)
+                {
+                    isBubbled = true;
+                    // System.out.print(isBubbleFilled(temp.get(i)) + " ");
+                    if(i == 0)
+                    {
+                        input.add("A");
+                        //System.out.println(count + 1 + " a");
+                    }
+                    else if(i == 1)
+                    {
+                        input.add("B");
+                        //System.out.println(count + 1 + " b");
+                    }
+                    else if(i == 2)
+                    {
+                        input.add("C");
+                        //System.out.println(count + 1+ " c");
+                    }
+                    else if(i == 3)
+                    {
+                        input.add("D");
+                        //System.out.println(count + 1 + " d");
+                    }
+
+                }
+
+            }
+            if(isBubbled == false)
+            {
+                input.add(" ");
+            }
+            isBubbled = false;
+            // System.out.println();
+            temp.clear();
+            count++;
+            startValue = startValue+4;
+            // System.out.println("Start Value " + startValue);
+
+        }
+        int inputValue = 0;
+        String[][] Reading = new String[7][6];
+        for (int i = 0; i < 7; i++)
+        {
+            for (int j = 0; j < 6; j++)
+            {
+                if (shouldSkipSpace(i, j)) {
+                    continue;  // Skip to the next iteration
+                }
+
+                // Access the space and assign a value
+                Reading[i][j] = input.get(inputValue);
+                inputValue++;
+            }
+
+        }
+        inputValue = 0;
+        input.clear();
+        for (int j = 0; j < Reading[0].length; j++) {
+            for (int i = 0; i < Reading.length; i++) {
+                // Check if the space should be skipped
+                if (shouldSkipSpace(i, j)) {
+                    continue;  // Skip to the next iteration
+                }
+
+                // Access the space and print its value
+                //System.out.println(Reading[i][j]);
+                input.add(Reading[i][j]);
+            }
+        }
+        for (int i = 0; i < 40; i++)
+        {
+            if( !(i % 2 == 0))//It will be odd since ArrayList starts from 0
+            {
+                if(input.get(i).equals("A"))
+                {
+                   input.set(i, "F");//Replace all of the odd(second values on paper) with F
+                }
+                else if(input.get(i).equals("B"))
+                {
+                    input.set(i, "G");
+                }
+                else if(input.get(i).equals("C"))
+                {
+                    input.set(i, "H");
+                }
+                else if(input.get(i).equals("D"))
+                {
+                    input.set(i, "J");
+                }
+            }
+        }
+        generateCSV();
+        for (int i = 0; i < key.size(); i++) {
+
+            if(input.get(i).equals(" ")){
+                System.out.println("Empty Answer Bubble for #" + (i+1));
+                //appendToOutput("Empty Answer Bubble for #" + (i+1));
+                System.out.println("The Correct Answer is " + key.get(i));
+                //appendToOutput("The Correct Answer is " + key.get(i));
+                //countIncorrect++;
+            }
+            else if(!(key.get(i).equals(input.get(i))))
+            {
+
+                System.out.println("# " + (i+1) + " is incorrect");
+                //appendToOutput("# " + (i+1) + " is incorrect");
+                System.out.println("The Correct Answer is " + key.get(i));
+                //appendToOutput("The Correct Answer is " + key.get(i));
+                //countIncorrect++;
+            }
+            //System.out.println(key.get(i));
+        }
+         /*
+        for (int i = 0; i < input.size(); i++) {
+            System.out.println((i+1)+input.get(i));
+        }
+
+        for (int i = 0; i < 40; i++)
+        {
+            if( !(i % 2 == 0))//It will be odd since ArrayList starts from 0
+            {
+                if(finalInput.get(i).equals("A"))
+                {
+                    finalInput.set(i, "F");//Replace all of the odd(second values on paper) with F
+                }
+                else if(finalInput.get(i).equals("B"))
+                {
+                    finalInput.set(i, "G");
+                }
+                else if(finalInput.get(i).equals("C"))
+                {
+                    finalInput.set(i, "H");
+                }
+                else if(finalInput.get(i).equals("D"))
+                {
+                    finalInput.set(i, "J");
+                }
+            }
+        }
+        for (int i = 0; i < input.size(); i++)
+        {
+           System.out.print((i+1) + " " + input.get(i));
+           System.out.println();
+        }
+         */
         displayImage(result, "Filled Regions");
+    }
+public static boolean shouldSkipSpace(int i, int j)
+{
+    if((i == 5 & j == 5)||(i == 6 & j == 5))
+    {
+        return true;
+    }
+    return false;
+}
+    public static void generateCSV()
+    {
+        String line = "";
+
+        try{
+            BufferedReader b = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY4.csv"));
+            while((line = b.readLine()) != null)
+            {
+                String [] values = line.split(","); //Takes the values of the CSV File into the array
+                //Takes and splits by column so values[0] is value in the first column of that line
+                //System.out.println(values[2]);;
+                key.add(values[2]); //2 is the third column which holds the Reading test key
+            }
+
+        }
+        catch(Exception e)
+        {
+            System.out.println(e);
+        }
+    }
+    public static boolean isBubbleFilled(Scalar color)
+    {
+
+        if(color.val[0] == 255.0)
+        {
+            return false;
+        }
+        return true;
     }
 
     private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2)
