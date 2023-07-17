@@ -14,18 +14,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ClickRemove {
+public class ClickAdd {
     private static List<CustomRect> regionRects;
     private static Mat image;
     private static Mat binary;
     private static Mat result;
-    private static JFrame frame; // Declare the frame variable at the class level
+    private static JFrame frame;
+
     public static void main(String[] args) {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Loads the OpenCV library
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
         // Provide the input image file path
         String imagePath = "path/to/your/image.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\LeftTiltTopCropped.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\EnglishBubbled.jpg";
         // Load the image
         image = Imgcodecs.imread(imagePath);
 
@@ -65,56 +67,46 @@ public class ClickRemove {
         // Draw rectangles based on the sorted regionRects list
         result = image.clone();
         drawRectangles();
-        frame = new JFrame(); // Initialize the frame variable
+        frame = new JFrame();
         frame.setLayout(new BorderLayout());
         frame.setTitle("Filled Regions");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Add the scroll pane to the frame
         JScrollPane scrollPane = new JScrollPane();
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
 
-        // Set the preferred size of the frame
         frame.setPreferredSize(new Dimension(image.cols() + 20, image.rows() + 20));
 
-        // Pack and display the frame
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
-        // Display the initial image with mouse click event handling
         for (int i = 0; i < regionRects.size(); i++) {
             System.out.print("WIDTH" + regionRects.get(i).width + " HEIGHT " + regionRects.get(i).height);
             System.out.println();
         }
         displayImage(result, "Filled Regions");
-        //displayImage(result, "Filled Regions");
     }
 
     private static void drawRectangles() {
         for (CustomRect rect : regionRects) {
-            // Calculate filled percentage
             double filledPercentage = calculateFilledPercentage(rect, binary);
 
-            // Adjust color and check nesting based on filled percentage and length condition
             Scalar color;
             if (filledPercentage >= 0.7) {
-                // Check if the rectangle is inside another rectangle and satisfies length condition
                 if (isInsideAnyRectangle(rect, regionRects, false) || rect.width <= rect.height) {
-                    continue;  // Skip drawing the red rectangle
+                    continue;
                 } else {
-                    color = new Scalar(0, 0, 255);  // Red color
+                    color = new Scalar(0, 0, 255);
                 }
             } else {
-                // Check if the rectangle is inside another rectangle and satisfies length condition
                 if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) {
-                    continue;  // Skip drawing the blue rectangle
+                    continue;
                 } else {
-                    color = new Scalar(255, 0, 0);  // Blue color
+                    color = new Scalar(255, 0, 0);
                 }
             }
 
-            // Draw the rectangle
             Point topLeft = new Point(rect.x, rect.y);
             Point bottomRight = new Point(rect.x + rect.width, rect.y + rect.height);
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
@@ -127,62 +119,44 @@ public class ClickRemove {
         JLabel lbl = new JLabel();
         lbl.setIcon(icon);
 
-        // Update the existing scroll pane with the new image
         JScrollPane scrollPane = (JScrollPane) frame.getContentPane().getComponent(0);
         scrollPane.setViewportView(lbl);
         scrollPane.revalidate();
         scrollPane.repaint();
 
-        // Update the frame title
         frame.setTitle(title);
 
-        // Add mouse click event handling to remove rectangles
         lbl.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 java.awt.Point clickPoint = e.getPoint();
-                removeRectangle(clickPoint);
+                addRectangle(clickPoint);
             }
         });
     }
 
+    private static void addRectangle(java.awt.Point clickPoint) {
+        int rectangleWidth = 36;
+        int rectangleHeight = 26;
+        int rectangleX = (int) (clickPoint.getX() - rectangleWidth / 2);
+        int rectangleY = (int) (clickPoint.getY() - rectangleHeight / 2);
 
+        // Create a new CustomRect representing the new rectangle
+        CustomRect newRect = new CustomRect(rectangleX, rectangleY, rectangleWidth, rectangleHeight);
 
-
-    private static void removeRectangle(java.awt.Point clickPoint) {
-        // Convert clickPoint to org.opencv.core.Point
-        org.opencv.core.Point opencvClickPoint = new org.opencv.core.Point(clickPoint.getX(), clickPoint.getY());
-
-        CustomRect removedRect = null;
-
-        for (CustomRect rect : regionRects) {
-            if (rect.contains(opencvClickPoint)) {
-                removedRect = rect;
-                break;
-            }
+        // Check if the new rectangle is inside any existing rectangle
+        if (isInsideAnyRectangle(newRect, regionRects, true)) {
+            return; // Skip drawing the rectangle
         }
 
-        if (removedRect == null) {
-            // If no rectangle was found at the click point, check if the click point is inside any existing rectangle
-            for (CustomRect rect : regionRects) {
-                if (rect.contains(opencvClickPoint)) {
-                    removedRect = rect;
-                    break;
-                }
-            }
-        }
+        // Add the new rectangle to the regionRects list
+        regionRects.add(newRect);
 
-        if (removedRect != null) {
-            regionRects.remove(removedRect);
+        result = image.clone();
+        drawRectangles();
 
-            result = image.clone();
-            drawRectangles();
-
-            displayImage(result, "Filled Regions");
-        }
+        displayImage(result, "Filled Regions");
     }
-
-
 
     private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2) {
         int x = Math.min(rect1.x, rect2.x);
@@ -236,5 +210,3 @@ public class ClickRemove {
         return image;
     }
 }
-
-

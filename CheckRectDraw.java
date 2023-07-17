@@ -127,7 +127,7 @@ public class CheckRectDraw
 
         // Draw rectangles based on the sortedRects list
         Mat result = image.clone();
-
+        List<CustomRect> finalRects = new ArrayList<>();
         for (CustomRect rect : sortedRects)
         {
             // Calculate filled percentage
@@ -140,16 +140,20 @@ public class CheckRectDraw
                 // Check if the rectangle is inside another rectangle and satisfies length condition
                 if (isInsideAnyRectangle(rect, regionRects, false) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
                 {
+                   // sortedRects.remove(sortedRects.indexOf(rect));
                     continue;//If either of these conditions are met then that means that we shouldn't draw this rectangle
                 } else {
+                    finalRects.add(rect);
                     color = new Scalar(0, 0, 255);//This sets the color to red(According to OpenCV's BGR)
                 }
             } else {
                 // Check if the rectangle is inside another rectangle and satisfies length condition
                 if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
                 {
+                  //  sortedRects.remove(sortedRects.indexOf(rect));
                     continue;//If either of these conditions are met then that means that we shouldn't draw this rectangle
                 } else {
+                    finalRects.add(rect);
                     color = new Scalar(255, 0, 0);//This sets the color to red(According to OpenCV's BGR)
                 }
             }

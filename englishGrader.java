@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-public class RectDraw {
+public class englishGrader {
     String csvPath = "C:\\Users\\mihir\\Documents\\CSV\\E25_KEY4.csv";
     static ArrayList <String> key = new ArrayList<>();
     public static void main(String[] args) {
@@ -24,6 +24,8 @@ public class RectDraw {
         imagePath = "C:\\Users\\mihir\\Desktop\\RightTiltCropped.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\BottomPhoto.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\E25Reading.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\E25English.jpg";
+       // imagePath = "C:\\Users\\mihir\\Desktop\\EnglishBubbled.jpg";
         Mat image = Imgcodecs.imread(imagePath);
 
         Mat gray = new Mat();
@@ -132,16 +134,20 @@ public class RectDraw {
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
 
         }
+        finalRects.remove(80);
+        displayImage(result, "Filled Regions");
+        System.out.println(finalRects.size());
         List<CustomRect> temp = new ArrayList<>();
         ArrayList<String> input = new ArrayList<>();
         ArrayList<String> finalInput = new ArrayList<>();
         int startValue = 0;
         int count = 0;
         boolean isBubbled = false;
-        while(count < 40) {
+        //System.out.println(finalRects.size());
+        while(count < 75) {
             for (int i = startValue; i < startValue + 4; i++) {
                 temp.add(finalRects.get(i)); //Add the set of 4 values to the temp list
-
+                //System.out.println(temp.get(i));
             }
             for (int i = 0; i < temp.size(); i++)
             {
@@ -186,22 +192,46 @@ public class RectDraw {
             // System.out.println("Start Value " + startValue);
 
         }
+
+        ArrayList<Integer> tempList = new ArrayList<Integer>();
+        for (int i = 0; i < 75; i++) {
+            tempList.add((i+1));
+        }
         int inputValue = 0;
-        String[][] Reading = new String[7][6];
-        for (int i = 0; i < 7; i++)
+        String[][] Reading = new String[13][6];
+        System.out.println("INPUT SIZE" + input.size());
+        for (int i = 0; i < 13; i++)
         {
             for (int j = 0; j < 6; j++)
             {
                 if (shouldSkipSpace(i, j)) {
                     continue;  // Skip to the next iteration
                 }
-
+                if(inputValue > 74)
+                {
+                    break;
+                }
                 // Access the space and assign a value
+                //System.out.println(inputValue);
                 Reading[i][j] = input.get(inputValue);
+                //System.out.println(input.get(inputValue));
                 inputValue++;
-            }
 
+            }
         }
+        for (int j = 0; j < Reading[0].length; j++) {
+            for (int i = 0; i < Reading.length; i++) {
+                // Check if the space should be skipped
+                if (shouldSkipSpace(i, j)) {
+                    continue;  // Skip to the next iteration
+                }
+
+                // Access the space and print its value
+                System.out.println(Reading[i][j]);
+                //input.add(Reading[i][j]);
+            }
+        }
+        /*
         inputValue = 0;
         input.clear();
         for (int j = 0; j < Reading[0].length; j++) {
@@ -216,7 +246,12 @@ public class RectDraw {
                 input.add(Reading[i][j]);
             }
         }
-        for (int i = 0; i < 40; i++)
+        for (int i = 0; i < input.size(); i++) {
+            System.out.println((i+1) + input.get(i));
+        }
+        */
+
+        /*for (int i = 0; i < 75; i++)
         {
             if( !(i % 2 == 0))//It will be odd since ArrayList starts from 0
             {
@@ -262,6 +297,7 @@ public class RectDraw {
             }
             //System.out.println(key.get(i));
         }
+        */
         //System.out.println(key.size());
         /*
 
@@ -318,11 +354,11 @@ public class RectDraw {
            System.out.println();
         }
          */
-        displayImage(result, "Filled Regions");
+        //displayImage(result, "Filled Regions");
     }
     public static boolean shouldSkipSpace(int i, int j)
     {
-        if((i == 5 & j == 5)||(i == 6 & j == 5))
+        if((i == 5 & j == 10)||(i == 5 & j == 11)||(i == 5 & j == 12))
         {
             return true;
         }
@@ -334,10 +370,10 @@ public class RectDraw {
 
         try {
             BufferedReader b = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
-            while ((line = b.readLine()) != null && lineCount < 40) { // Read until 40 lines or end of file
+            while ((line = b.readLine()) != null && lineCount < 75) { // Read until 40 lines or end of file
                 String[] values = line.split(","); // Takes the values of the CSV File into the array
                 if (values.length >= 3) { // Check if the array has at least 3 elements
-                    key.add(values[2]); // 2 is the third column which holds the Reading test key
+                    key.add(values[0]); // 2 is the third column which holds the Reading test key
                 } else {
                     System.out.println("Invalid line: " + line);
                 }

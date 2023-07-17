@@ -1,18 +1,20 @@
 import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
 
-public class CustomRect extends Rect implements Comparable<CustomRect>
-{
-    public CustomRect(int x, int y, int width, int height)
-    {
+public class CustomRect extends Rect implements Comparable<CustomRect> {
+    public Scalar color;
+    public CustomRect(int x, int y, int width, int height) {
         super(x, y, width, height);
+    }
+    public CustomRect(int x, int y, int width, int height, Scalar col) {
+        super(x, y, width, height);
+        this.color = col;
     }
 
     @Override
-    public int compareTo(CustomRect other)
-    {
+    public int compareTo(CustomRect other) {
         int yComparison = Integer.compare(this.y, other.y);
-        if (yComparison != 0)
-        {
+        if (yComparison != 0) {
             return yComparison;
         }
 
