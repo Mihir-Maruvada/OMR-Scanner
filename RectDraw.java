@@ -3,30 +3,36 @@ import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 public class RectDraw {
+    private static boolean addRectEnabled = false;
+    private static boolean removeRectEnabled = false;
     private static List<CustomRect> regionRects;
     private static Mat image;
     private static Mat binary;
     private static Mat result;
-    private static JFrame frame; // Declare the frame variable at the class level
-    private static boolean removeEnabled = false;
+    private static JFrame frame;
 
     public static void main(String[] args) {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // Loads the OpenCV library
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
         // Provide the input image file path
         String imagePath = "path/to/your/image.jpg";
-        imagePath = "C:\\Users\\mihir\\Desktop\\LeftTiltTopCropped.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\RightTiltCropped.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\BottomPhoto.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\E25Reading.jpg";
         // Load the image
         image = Imgcodecs.imread(imagePath);
 
@@ -66,65 +72,76 @@ public class RectDraw {
         // Draw rectangles based on the sorted regionRects list
         result = image.clone();
         drawRectangles();
-        frame = new JFrame(); // Initialize the frame variable
+        frame = new JFrame();
         frame.setLayout(new BorderLayout());
         frame.setTitle("Filled Regions");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Add the scroll pane to the frame
         JScrollPane scrollPane = new JScrollPane();
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
 
-        // Set the preferred size of the frame
         frame.setPreferredSize(new Dimension(image.cols() + 20, image.rows() + 20));
 
-        // Pack and display the frame
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
-        // Display the initial image with mouse click event handling
+        for (int i = 0; i < regionRects.size(); i++) {
+            System.out.print("WIDTH" + regionRects.get(i).width + " HEIGHT " + regionRects.get(i).height);
+            System.out.println();
+        }
         displayImage(result, "Filled Regions");
 
-        // Add key listener to enable/disable remove rectangle feature
-        frame.addKeyListener(new KeyAdapter() {
+        // Add KeyListener to the frame
+        frame.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+            }
+
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyChar() == 'R' || e.getKeyChar() == 'r') {
-                    removeEnabled = !removeEnabled;
-                    System.out.println("Remove Rectangle Feature: " + (removeEnabled ? "Enabled" : "Disabled"));
+                if (e.getKeyChar() == 'A' || e.getKeyChar() == 'a') {
+                    toggleAddRect();
+                } else if (e.getKeyChar() == 'R' || e.getKeyChar() == 'r') {
+                    toggleRemoveRect();
                 }
             }
-        });
 
-        // Request focus on the frame to receive key events
-        frame.requestFocusInWindow();
+            @Override
+            public void keyReleased(KeyEvent e) {
+            }
+        });
+    }
+
+    private static void toggleAddRect() {
+        addRectEnabled = !addRectEnabled;
+        System.out.println("Add Rectangle: " + (addRectEnabled ? "Enabled" : "Disabled"));
+    }
+
+    private static void toggleRemoveRect() {
+        removeRectEnabled = !removeRectEnabled;
+        System.out.println("Remove Rectangle: " + (removeRectEnabled ? "Enabled" : "Disabled"));
     }
 
     private static void drawRectangles() {
         for (CustomRect rect : regionRects) {
-            // Calculate filled percentage
             double filledPercentage = calculateFilledPercentage(rect, binary);
 
-            // Adjust color and check nesting based on filled percentage and length condition
             Scalar color;
             if (filledPercentage >= 0.7) {
-                // Check if the rectangle is inside another rectangle and satisfies length condition
                 if (isInsideAnyRectangle(rect, regionRects, false) || rect.width <= rect.height) {
-                    continue;  // Skip drawing the red rectangle
+                    continue;
                 } else {
-                    color = new Scalar(0, 0, 255);  // Red color
+                    color = new Scalar(0, 0, 255);
                 }
             } else {
-                // Check if the rectangle is inside another rectangle and satisfies length condition
                 if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) {
-                    continue;  // Skip drawing the blue rectangle
+                    continue;
                 } else {
-                    color = new Scalar(255, 0, 0);  // Blue color
+                    color = new Scalar(255, 0, 0);
                 }
             }
 
-            // Draw the rectangle
             Point topLeft = new Point(rect.x, rect.y);
             Point bottomRight = new Point(rect.x + rect.width, rect.y + rect.height);
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
@@ -137,20 +154,20 @@ public class RectDraw {
         JLabel lbl = new JLabel();
         lbl.setIcon(icon);
 
-        // Update the existing scroll pane with the new image
         JScrollPane scrollPane = (JScrollPane) frame.getContentPane().getComponent(0);
         scrollPane.setViewportView(lbl);
         scrollPane.revalidate();
         scrollPane.repaint();
 
-        // Update the frame title
         frame.setTitle(title);
 
-        // Add mouse click event handling to remove rectangles
         lbl.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (removeEnabled) {
+                if (addRectEnabled) {
+                    java.awt.Point clickPoint = e.getPoint();
+                    addRectangle(clickPoint);
+                } else if (removeRectEnabled) {
                     java.awt.Point clickPoint = e.getPoint();
                     removeRectangle(clickPoint);
                 }
@@ -158,27 +175,64 @@ public class RectDraw {
         });
     }
 
+    private static void addRectangle(java.awt.Point clickPoint) {
+        int avgWidth = 0;
+        int avgHeight = 0;
+        for (CustomRect rect : regionRects) {
+            avgWidth += rect.width;
+            avgHeight += rect.height;
+        }
+        avgWidth /= regionRects.size();
+        avgHeight /= regionRects.size();
+
+        int rectangleWidth = avgWidth;
+        int rectangleHeight = avgHeight;
+        int rectangleX = (int) (clickPoint.getX() - rectangleWidth / 2);
+        int rectangleY = (int) (clickPoint.getY() - rectangleHeight / 2);
+
+        CustomRect newRect = new CustomRect(rectangleX, rectangleY, rectangleWidth, rectangleHeight);
+
+        if (isInsideAnyRectangle(newRect, regionRects, true)) {
+            return;
+        }
+
+        double filledPercentage = calculateFilledPercentage(newRect, binary);
+
+        Scalar color;
+        if (filledPercentage >= 0.7) {
+            color = new Scalar(0, 0, 255); // Red color
+        } else {
+            color = new Scalar(255, 0, 0); // Blue color
+        }
+
+        regionRects.add(newRect);
+
+        result = image.clone();
+        drawRectangles();
+
+        Point topLeft = new Point(newRect.x, newRect.y);
+        Point bottomRight = new Point(newRect.x + newRect.width, newRect.y + newRect.height);
+        Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
+
+        displayImage(result, "Filled Regions");
+    }
+
     private static void removeRectangle(java.awt.Point clickPoint) {
-        // Convert clickPoint to org.opencv.core.Point
         org.opencv.core.Point opencvClickPoint = new org.opencv.core.Point(clickPoint.getX(), clickPoint.getY());
 
-        CustomRect removedRect = null;
-
-        for (CustomRect rect : regionRects) {
+        Iterator<CustomRect> iterator = regionRects.iterator();
+        while (iterator.hasNext()) {
+            CustomRect rect = iterator.next();
             if (rect.contains(opencvClickPoint)) {
-                removedRect = rect;
+                iterator.remove();
                 break;
             }
         }
 
-        if (removedRect != null) {
-            regionRects.remove(removedRect);
+        result = image.clone();
+        drawRectangles();
 
-            result = image.clone();
-            drawRectangles();
-
-            displayImage(result, "Filled Regions");
-        }
+        displayImage(result, "Filled Regions");
     }
 
     private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2) {
