@@ -136,8 +136,18 @@ public class ClickAdd {
     }
 
     private static void addRectangle(java.awt.Point clickPoint) {
-        int rectangleWidth = 36;
-        int rectangleHeight = 26;
+        // Get the average width and height of existing rectangles
+        int avgWidth = 0;
+        int avgHeight = 0;
+        for (CustomRect rect : regionRects) {
+            avgWidth += rect.width;
+            avgHeight += rect.height;
+        }
+        avgWidth /= regionRects.size();
+        avgHeight /= regionRects.size();
+
+        int rectangleWidth = avgWidth;
+        int rectangleHeight = avgHeight;
         int rectangleX = (int) (clickPoint.getX() - rectangleWidth / 2);
         int rectangleY = (int) (clickPoint.getY() - rectangleHeight / 2);
 
@@ -149,14 +159,31 @@ public class ClickAdd {
             return; // Skip drawing the rectangle
         }
 
+        // Calculate the filled percentage of the region covered by the new rectangle
+        double filledPercentage = calculateFilledPercentage(newRect, binary);
+
+        Scalar color;
+        if (filledPercentage >= 0.7) {
+            color = new Scalar(0, 0, 255); // Red color
+        } else {
+            color = new Scalar(255, 0, 0); // Blue color
+        }
+
         // Add the new rectangle to the regionRects list
         regionRects.add(newRect);
 
         result = image.clone();
         drawRectangles();
 
+        // Draw the new rectangle with the determined color
+        Point topLeft = new Point(newRect.x, newRect.y);
+        Point bottomRight = new Point(newRect.x + newRect.width, newRect.y + newRect.height);
+        Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
+
         displayImage(result, "Filled Regions");
     }
+
+
 
     private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2) {
         int x = Math.min(rect1.x, rect2.x);
