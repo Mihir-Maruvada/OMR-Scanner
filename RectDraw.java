@@ -2,7 +2,7 @@ import org.opencv.core.*;
 import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-
+import java.util.Iterator;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -11,54 +11,57 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class RectDraw {
+public class RectDraw
+{
     private static boolean addRectEnabled = false;
     private static boolean removeRectEnabled = false;
-    private static List<CustomRect> regionRects;
+    private static final int FRAME_WIDTH = 800;
+    private static final int FRAME_HEIGHT = 600;
+    private static final int PAUSE_DURATION_MS = 0;
+    public static List<CustomRect> finalRects = new ArrayList<>();
+    public static List<CustomRect> regionRects = new ArrayList<>();
+    private static JFrame frame;
+    private static JPanel imagePanel;
     private static Mat image;
     private static Mat binary;
     private static Mat result;
-    private static JFrame frame;
-
+   public static double filledPercentage;
     public static void main(String[] args) {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);//Need this to access/load OpenCV Library
 
-        // Provide the input image file path
         String imagePath = "path/to/your/image.jpg";
-        imagePath = "C:\\Users\\mihir\\Desktop\\RightTiltCropped.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\BottomPhoto.jpg";
-        imagePath = "C:\\Users\\mihir\\Desktop\\E25Reading.jpg";
-        // Load the image
-        image = Imgcodecs.imread(imagePath);
+        imagePath = "C:\\Users\\mihir\\Desktop\\MathBubbled.jpg";
+         image = Imgcodecs.imread(imagePath);
 
         Mat gray = new Mat();
-        Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY); //Convert the image to grey scale
 
-        // Apply threshold to obtain binary image
-        binary = new Mat();
-        Imgproc.threshold(gray, binary, 0, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);
+         binary = new Mat();
+        Imgproc.threshold(gray, binary, 0, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);//Now apply threshodl to the grey image to get the binary image
 
-        // Find contours of gray filled regions
         List<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
-        Imgproc.findContours(binary, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(binary, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);//Now we find all the contours(we will filter them later).
 
-        // Filter out small contours and find the overall region
-        regionRects = new ArrayList<>();
+       //Custom Rect is my custom implementation of the OpenCV rect
         CustomRect overallRect = null;
 
-        for (MatOfPoint contour : contours) {
+        for (MatOfPoint contour : contours)
+        {
             Rect boundingRect = Imgproc.boundingRect(contour);
-            if ((boundingRect.area() > 750) && (boundingRect.area() < 3000)) {
-                if (overallRect == null) {
+            if ((boundingRect.area() > 750) && (boundingRect.area() < 3000)) //Filter out the contours by area
+            {
+                if (overallRect == null)
+                {
                     overallRect = new CustomRect(boundingRect.x, boundingRect.y, boundingRect.width, boundingRect.height);
                     regionRects.add(overallRect);
-                } else {
+                } else
+                {
                     CustomRect CustomRect = new CustomRect(boundingRect.x, boundingRect.y, boundingRect.width, boundingRect.height);
                     overallRect = unionRectangles(overallRect, CustomRect);
                     regionRects.add(CustomRect);
@@ -66,33 +69,118 @@ public class RectDraw {
             }
         }
 
-        // Sort the regionRects list based on the implemented compareTo method
+        //Now sort the Rectangles first by y(to get the row) and then by x in that row(to get it in READING ORDER)
+        //We will use the y value of the prevous rectangle and the y value of the current rectangle and see if their differece is within a range
+        //This range will tell us that those rectangels are in the same row.
+        //SEE BELOW
         Collections.sort(regionRects);
 
-        // Draw rectangles based on the sorted regionRects list
-        result = image.clone();
-        drawRectangles();
+
+        List<List<CustomRect>> groupedRects = new ArrayList<>();
+        List<CustomRect> currentGroup = new ArrayList<>();
+        int prevY = Integer.MIN_VALUE;
+
+        for (CustomRect rect : regionRects)
+        {
+            if (Math.abs(rect.y - prevY) <= 7) //To draw the rectangles by row, we can set a range of the y value(in this case 7)
+            {
+
+                currentGroup.add(rect);
+            } else {
+
+                Collections.sort(currentGroup, Comparator.comparingInt(rectangle -> rectangle.x));//Sort the current group list based on the x coordinate
+
+
+                groupedRects.add(currentGroup);
+
+
+                currentGroup = new ArrayList<>();
+                currentGroup.add(rect);
+            }
+
+            prevY = rect.y;
+        }
+
+
+        Collections.sort(currentGroup, Comparator.comparingInt(rectangle -> rectangle.x));
+
+
+        groupedRects.add(currentGroup);
+
+        //Now we can flatten the grouped rects list to get the rectangles in their final sorted order
+        List<CustomRect> sortedRects = groupedRects.stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        //Now we can draw these sorted rectangles
+
         frame = new JFrame();
         frame.setLayout(new BorderLayout());
         frame.setTitle("Filled Regions");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
+
 
         JScrollPane scrollPane = new JScrollPane();
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
 
-        frame.setPreferredSize(new Dimension(image.cols() + 20, image.rows() + 20));
+
+        imagePanel = new JPanel();
+        imagePanel.setLayout(new FlowLayout());
+        scrollPane.setViewportView(imagePanel);
+
 
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
 
-        for (int i = 0; i < regionRects.size(); i++) {
-            System.out.print("WIDTH" + regionRects.get(i).width + " HEIGHT " + regionRects.get(i).height);
-            System.out.println();
-        }
-        displayImage(result, "Filled Regions");
+        // Draw rectangles based on the sortedRects list
+        result = image.clone();
+         finalRects = new ArrayList<>();
+        for (CustomRect rect : sortedRects)
+        {
+            // Calculate filled percentage
+            double filledPercentage = calculateFilledPercentage(rect, binary);
 
-        // Add KeyListener to the frame
+            // Adjust color and check nesting based on filled percentage and length condition
+            Scalar color;
+            if (filledPercentage >= 0.7) //This means that the rectangle and the bubble inside is filled.
+            {
+                // Check if the rectangle is inside another rectangle and satisfies length condition
+                if (isInsideAnyRectangle(rect, finalRects, false) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
+                {
+                    // sortedRects.remove(sortedRects.indexOf(rect));
+                    continue;//If either of these conditions are met then that means that we shouldn't draw this rectangle
+                } else {
+                    finalRects.add(rect);
+                    color = new Scalar(0, 0, 255);//This sets the color to red(According to OpenCV's BGR)
+                }
+            } else {
+                // Check if the rectangle is inside another rectangle and satisfies length condition
+                if (isInsideAnyRectangle(rect, finalRects, true) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
+                {
+                    //  sortedRects.remove(sortedRects.indexOf(rect));
+                    continue;//If either of these conditions are met then that means that we shouldn't draw this rectangle
+                } else {
+                    finalRects.add(rect);
+                    color = new Scalar(255, 0, 0);//This sets the color to red(According to OpenCV's BGR)
+                }
+            }
+
+            Point topLeft = new Point(rect.x, rect.y);
+            Point bottomRight = new Point(rect.x + rect.width, rect.y + rect.height);
+            Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
+
+            displayImage(result);
+
+            //The code below pauses for a short duration so that we can see the rectangles being drawn step by step
+            try
+            {
+                Thread.sleep(PAUSE_DURATION_MS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         frame.addKeyListener(new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {
@@ -111,8 +199,8 @@ public class RectDraw {
             public void keyReleased(KeyEvent e) {
             }
         });
+        System.out.println(finalRects.size());
     }
-
     private static void toggleAddRect() {
         addRectEnabled = !addRectEnabled;
         System.out.println("Add Rectangle: " + (addRectEnabled ? "Enabled" : "Disabled"));
@@ -122,20 +210,194 @@ public class RectDraw {
         removeRectEnabled = !removeRectEnabled;
         System.out.println("Remove Rectangle: " + (removeRectEnabled ? "Enabled" : "Disabled"));
     }
+    private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2)
+    {
+        int x = Math.min(rect1.x, rect2.x);
+        int y = Math.min(rect1.y, rect2.y);
+        int width = Math.max(rect1.x + rect1.width, rect2.x + rect2.width) - x;
+        int height = Math.max(rect1.y + rect1.height, rect2.y + rect2.height) - y;
+        return new CustomRect(x, y, width, height);
+    }
 
+    private static double calculateFilledPercentage(CustomRect rect, Mat binaryImage)
+    {
+        int totalPixels = rect.width * rect.height;
+        int whitePixels = 0;
+
+        for (int y = rect.y; y < rect.y + rect.height; y++)
+        {
+            for (int x = rect.x; x < rect.x + rect.width; x++)
+            {
+                double[] pixel = binaryImage.get(y, x);
+                if (pixel[0] == 255)
+                {
+                    whitePixels++;
+                }
+            }
+        }
+
+        return (double) whitePixels / totalPixels;
+    }
+
+    private static boolean isInsideAnyRectangle(Rect rect, List<CustomRect> rectangles, boolean sameSize)
+    {
+        for (CustomRect r : rectangles)
+        {
+            if (r.equals(rect))
+            {
+                continue;
+            }
+
+            if (r.contains(rect.tl()) && (!sameSize || r.width > rect.width || r.height > rect.height))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void displayImage(Mat image)
+    {
+        BufferedImage img = matToBufferedImage(image);
+        ImageIcon icon = new ImageIcon(img);
+        JLabel lbl = new JLabel();
+        lbl.setIcon(icon);
+
+        imagePanel.removeAll();
+        imagePanel.add(lbl);
+
+        frame.revalidate();
+        frame.repaint();
+        lbl.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                java.awt.Point clickPoint = e.getPoint();
+                System.out.println(clickPoint);
+                if (addRectEnabled) {
+
+                    addRectangle(clickPoint);
+                } else if (removeRectEnabled) {
+
+                  //  System.out.println(clickPoint);
+                    removeRectangle(clickPoint);
+                }
+                //clickPoint.setLocation(0,0);
+            }
+        });
+    }
+    private static void addRectangle(java.awt.Point c2Point) {
+        int avgWidth = 0;
+        int avgHeight = 0;
+        for (CustomRect rect : finalRects) {
+            avgWidth += rect.width;
+            avgHeight += rect.height;
+        }
+        avgWidth /= finalRects.size();
+        avgHeight /= finalRects.size();
+
+        int rectangleWidth = avgWidth;
+        int rectangleHeight = avgHeight;
+        int rectangleX = (int) (c2Point.getX() - rectangleWidth / 2);
+        int rectangleY = (int) (c2Point.getY() - rectangleHeight / 2);
+
+        CustomRect newRect = new CustomRect(rectangleX, rectangleY, rectangleWidth, rectangleHeight);
+
+        if (isInsideAnyRectangle(newRect, finalRects, true)) {
+            return;
+        }
+
+        filledPercentage = calculateFilledPercentage(newRect, binary);
+
+        Scalar color;
+        if (filledPercentage >= 0.7) {
+            color = new Scalar(0, 0, 255); // Red color
+        } else {
+            color = new Scalar(255, 0, 0); // Blue color
+        }
+
+        finalRects.add(newRect);
+
+       // result = image.clone();
+        //drawRectangles();
+
+        Point topLeft = new Point(newRect.x, newRect.y);
+        Point bottomRight = new Point(newRect.x + newRect.width, newRect.y + newRect.height);
+        Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
+
+        displayImage(result);
+    }
+    /*private static void removeRectangle(java.awt.Point cPoint) {
+        org.opencv.core.Point opencvClickPoint = new org.opencv.core.Point(cPoint.getX(), cPoint.getY());
+
+        //Iterator<CustomRect> iterator = finalRects.iterator();
+        for (int i = 0; i < finalRects.size(); i++) {
+            finalRectsClone.add(finalRects.get(i));
+        }
+
+        for (CustomRect rect : finalRectsClone) {
+            //CustomRect rect = iterator.next();
+            if (rect.contains(opencvClickPoint)) {
+                finalRectsClone.remove(finalRectsClone.indexOf(rect));
+                //break;
+            }
+        }
+
+    finalRects.clear();
+        for (int i = 0; i < finalRects.size(); i++) {
+            finalRects.add(finalRectsClone.get(i));
+        }
+
+        result = image.clone();
+        for (CustomRect rect : finalRects) {
+           filledPercentage = calculateFilledPercentage(rect, binary);
+
+            Scalar color;
+            if (filledPercentage >= 0.7) {
+                color = new Scalar(0, 0, 255); // Red color
+            } else {
+                color = new Scalar(255, 0, 0); // Blue color
+            }
+            Point topLeft = new Point(rect.x, rect.y);
+            Point bottomRight = new Point(rect.x + rect.width, rect.y + rect.height);
+            Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
+        }
+        //drawRectangles();
+
+        displayImage(result);
+        finalRectsClone.clear();
+    }
+     */
+    private static void removeRectangle(java.awt.Point clickPoint) {
+        org.opencv.core.Point opencvClickPoint = new org.opencv.core.Point(clickPoint.getX(), clickPoint.getY());
+
+        Iterator<CustomRect> iterator = finalRects.iterator();
+        while (iterator.hasNext()) {
+            CustomRect rect = iterator.next();
+            if (rect.contains(opencvClickPoint)) {
+                iterator.remove();
+                break;
+            }
+        }
+
+        result = image.clone();
+        drawRectangles();
+
+        displayImage(result);
+    }
     private static void drawRectangles() {
-        for (CustomRect rect : regionRects) {
+        for (CustomRect rect : finalRects) {
             double filledPercentage = calculateFilledPercentage(rect, binary);
 
             Scalar color;
             if (filledPercentage >= 0.7) {
-                if (isInsideAnyRectangle(rect, regionRects, false) || rect.width <= rect.height) {
+                if (isInsideAnyRectangle(rect, finalRects, false) || rect.width <= rect.height) {
                     continue;
                 } else {
                     color = new Scalar(0, 0, 255);
                 }
             } else {
-                if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) {
+                if (isInsideAnyRectangle(rect, finalRects, true) || rect.width <= rect.height) {
                     continue;
                 } else {
                     color = new Scalar(255, 0, 0);
@@ -148,134 +410,11 @@ public class RectDraw {
         }
     }
 
-    private static void displayImage(Mat image, String title) {
-        BufferedImage img = matToBufferedImage(image);
-        ImageIcon icon = new ImageIcon(img);
-        JLabel lbl = new JLabel();
-        lbl.setIcon(icon);
-
-        JScrollPane scrollPane = (JScrollPane) frame.getContentPane().getComponent(0);
-        scrollPane.setViewportView(lbl);
-        scrollPane.revalidate();
-        scrollPane.repaint();
-
-        frame.setTitle(title);
-
-        lbl.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (addRectEnabled) {
-                    java.awt.Point clickPoint = e.getPoint();
-                    addRectangle(clickPoint);
-                } else if (removeRectEnabled) {
-                    java.awt.Point clickPoint = e.getPoint();
-                    removeRectangle(clickPoint);
-                }
-            }
-        });
-    }
-
-    private static void addRectangle(java.awt.Point clickPoint) {
-        int avgWidth = 0;
-        int avgHeight = 0;
-        for (CustomRect rect : regionRects) {
-            avgWidth += rect.width;
-            avgHeight += rect.height;
-        }
-        avgWidth /= regionRects.size();
-        avgHeight /= regionRects.size();
-
-        int rectangleWidth = avgWidth;
-        int rectangleHeight = avgHeight;
-        int rectangleX = (int) (clickPoint.getX() - rectangleWidth / 2);
-        int rectangleY = (int) (clickPoint.getY() - rectangleHeight / 2);
-
-        CustomRect newRect = new CustomRect(rectangleX, rectangleY, rectangleWidth, rectangleHeight);
-
-        if (isInsideAnyRectangle(newRect, regionRects, true)) {
-            return;
-        }
-
-        double filledPercentage = calculateFilledPercentage(newRect, binary);
-
-        Scalar color;
-        if (filledPercentage >= 0.7) {
-            color = new Scalar(0, 0, 255); // Red color
-        } else {
-            color = new Scalar(255, 0, 0); // Blue color
-        }
-
-        regionRects.add(newRect);
-
-        result = image.clone();
-        drawRectangles();
-
-        Point topLeft = new Point(newRect.x, newRect.y);
-        Point bottomRight = new Point(newRect.x + newRect.width, newRect.y + newRect.height);
-        Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
-
-        displayImage(result, "Filled Regions");
-    }
-
-    private static void removeRectangle(java.awt.Point clickPoint) {
-        org.opencv.core.Point opencvClickPoint = new org.opencv.core.Point(clickPoint.getX(), clickPoint.getY());
-
-        Iterator<CustomRect> iterator = regionRects.iterator();
-        while (iterator.hasNext()) {
-            CustomRect rect = iterator.next();
-            if (rect.contains(opencvClickPoint)) {
-                iterator.remove();
-                break;
-            }
-        }
-
-        result = image.clone();
-        drawRectangles();
-
-        displayImage(result, "Filled Regions");
-    }
-
-    private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2) {
-        int x = Math.min(rect1.x, rect2.x);
-        int y = Math.min(rect1.y, rect2.y);
-        int width = Math.max(rect1.x + rect1.width, rect2.x + rect2.width) - x;
-        int height = Math.max(rect1.y + rect1.height, rect2.y + rect2.height) - y;
-        return new CustomRect(x, y, width, height);
-    }
-
-    private static double calculateFilledPercentage(CustomRect rect, Mat binaryImage) {
-        int totalPixels = rect.width * rect.height;
-        int whitePixels = 0;
-
-        for (int y = rect.y; y < rect.y + rect.height; y++) {
-            for (int x = rect.x; x < rect.x + rect.width; x++) {
-                double[] pixel = binaryImage.get(y, x);
-                if (pixel[0] == 255) {
-                    whitePixels++;
-                }
-            }
-        }
-
-        return (double) whitePixels / totalPixels;
-    }
-
-    private static boolean isInsideAnyRectangle(Rect rect, List<CustomRect> rectangles, boolean sameSize) {
-        for (CustomRect r : rectangles) {
-            if (r.equals(rect)) {
-                continue;
-            }
-
-            if (r.contains(rect.tl()) && (!sameSize || r.width > rect.width || r.height > rect.height)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static BufferedImage matToBufferedImage(Mat mat) {
+    private static BufferedImage matToBufferedImage(Mat mat)
+    {
         int type = BufferedImage.TYPE_BYTE_GRAY;
-        if (mat.channels() > 1) {
+        if (mat.channels() > 1)
+        {
             type = BufferedImage.TYPE_3BYTE_BGR;
         }
         int bufferSize = mat.channels() * mat.cols() * mat.rows();
@@ -287,3 +426,4 @@ public class RectDraw {
         return image;
     }
 }
+
