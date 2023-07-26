@@ -1,3 +1,4 @@
+
 import org.opencv.core.*;
 import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
@@ -13,6 +14,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+
 public class englishGrader {
     String csvPath = "C:\\Users\\mihir\\Documents\\CSV\\E25_KEY4.csv";
     static ArrayList <String> key = new ArrayList<>();
@@ -115,7 +117,7 @@ public class englishGrader {
                 } else {
 
                     color = new Scalar(0, 0, 255);//This sets the color to red(According to OpenCV's BGR)
-                    finalRects.add(new CustomRect(rect.x, rect.y, rect.width, rect.height, color));
+                    finalRects.add(new CustomRect(rect.x, rect.y, rect.width, rect.height));
                 }
             } else {
                 if (isInsideAnyRectangle(rect, regionRects, true) || rect.width <= rect.height) //Check if this rectangle is inside any rectangle or if its width is less than its height(this is to prevent any rectangle inside rectangle cases and any Question numbers being drawn)
@@ -124,7 +126,7 @@ public class englishGrader {
                 } else {
 
                     color = new Scalar(255, 0, 0);//This sets the color to blue(ACCORDING TO OpenCV's BGR)
-                    finalRects.add(new CustomRect(rect.x, rect.y, rect.width, rect.height, color));
+                    finalRects.add(new CustomRect(rect.x, rect.y, rect.width, rect.height));
                 }
             }
 
@@ -231,7 +233,7 @@ public class englishGrader {
                 //input.add(Reading[i][j]);
             }
         }
-        /*
+
         inputValue = 0;
         input.clear();
         for (int j = 0; j < Reading[0].length; j++) {
@@ -249,9 +251,9 @@ public class englishGrader {
         for (int i = 0; i < input.size(); i++) {
             System.out.println((i+1) + input.get(i));
         }
-        */
 
-        /*for (int i = 0; i < 75; i++)
+
+        for (int i = 0; i < 75; i++)
         {
             if( !(i % 2 == 0))//It will be odd since ArrayList starts from 0
             {
@@ -297,9 +299,8 @@ public class englishGrader {
             }
             //System.out.println(key.get(i));
         }
-        */
         //System.out.println(key.size());
-        /*
+
 
         for (int i = 0; i < key.size(); i++) {
 
@@ -353,9 +354,10 @@ public class englishGrader {
            System.out.print((i+1) + " " + input.get(i));
            System.out.println();
         }
-         */
+
         //displayImage(result, "Filled Regions");
     }
+
     public static boolean shouldSkipSpace(int i, int j)
     {
         if((i == 5 & j == 10)||(i == 5 & j == 11)||(i == 5 & j == 12))

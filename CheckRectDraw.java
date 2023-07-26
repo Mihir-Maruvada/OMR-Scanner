@@ -17,7 +17,7 @@ public class CheckRectDraw
 {
     private static final int FRAME_WIDTH = 800;
     private static final int FRAME_HEIGHT = 600;
-    private static final int PAUSE_DURATION_MS = 300;
+    private static final int PAUSE_DURATION_MS = 0;
 
     private static JFrame frame;
     private static JPanel imagePanel;
@@ -27,6 +27,7 @@ public class CheckRectDraw
 
         String imagePath = "path/to/your/image.jpg";
         imagePath = "C:\\Users\\mihir\\Desktop\\BottomPhoto.jpg";
+        imagePath = "C:\\Users\\mihir\\Desktop\\MathBubbled.jpg";
         Mat image = Imgcodecs.imread(imagePath);
 
         Mat gray = new Mat();
@@ -172,6 +173,7 @@ public class CheckRectDraw
                 e.printStackTrace();
             }
         }
+        System.out.println(finalRects.size());
     }
 
     private static CustomRect unionRectangles(CustomRect rect1, CustomRect rect2)

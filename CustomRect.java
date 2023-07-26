@@ -6,9 +6,13 @@ public class CustomRect extends Rect implements Comparable<CustomRect> {
     public CustomRect(int x, int y, int width, int height) {
         super(x, y, width, height);
     }
+
     public CustomRect(int x, int y, int width, int height, Scalar col) {
+
         super(x, y, width, height);
+        //super();
         this.color = col;
+        //RectDraw.color.add(col);
     }
 
     @Override
