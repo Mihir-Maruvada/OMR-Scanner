@@ -2,6 +2,7 @@ import org.opencv.core.Scalar;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -22,9 +23,42 @@ public class Grader
     public int stopCount = 0;//Used as a precaution when reading csv files to prevent accessing null values.
    public int inputValue = 0;
    public Scalar color = new Scalar(0,0,0);
-    public Grader(List<CustomRect> rectangles, String subjectCode)
+    public List<CustomRect> test1 = new ArrayList<>();
+    public List<CustomRect> test2 = new ArrayList<>();
+    public Grader(List<CustomRect> rectangles, String subjectCode, String cPath)
     {
+        test1.clear();
+        test2.clear();
+        csvPath = cPath;
         this.subjCode = subjectCode;
+        if(subjCode.equals("engMath"))
+        {
+
+            for (int i = 0; i < 300; i++) {
+                test1.add(rectangles.get(i));
+
+            }
+            for (int i = 300; i < 600; i++) {
+                test2.add(rectangles.get(i));
+            }
+            gradeEng(test1);
+            gradeMath(test2);
+
+            //System.out.println(test1.size());
+            //System.out.println(test2.size());
+        }
+        if(subjCode.equals("readSci"))
+        {
+            for (int i = 0; i < 160; i++) {
+                test1.add(rectangles.get(i));
+
+            }
+            for (int i = 160; i < 320; i++) {
+                test2.add(rectangles.get(i));
+            }
+            gradeRead(test1);
+            gradeSci(test2);
+        }
         if(subjCode.equals("eng"))
         {
             gradeEng(rectangles);
@@ -48,6 +82,12 @@ public void gradeEng(List<CustomRect> engRect)
 
     input.clear();
     bubbleCount = 0;
+    input.clear();
+    bubbleCount = 0;
+    temp.clear();
+    startValue = 0;
+    count = 0;
+    incorrectQuestions.clear();
     //System.out.println(finalRects.size());
     while(count < 75) {
         for (int i = startValue; i < startValue + 4; i++) {
@@ -179,7 +219,7 @@ public void gradeEng(List<CustomRect> engRect)
             //tempCount++;
             // key.add(values[2]); //2 is the third column which holds the Reading test key
         }
-        System.out.println("KEY SIZE" + key.size());
+        //System.out.println("KEY SIZE" + key.size());
 
     }
     catch(Exception e)
@@ -188,23 +228,27 @@ public void gradeEng(List<CustomRect> engRect)
     }
 
     //COMPARING THE KEY AND THE INPUT TO GET THE RESULTS
+    GUI.appendToOutput("ENGLISH");
     for (int i = 0; i < input.size(); i++) {
 
         if(input.get(i).equals(" ")){
-            System.out.println("Empty Answer Bubble for #" + (i+1));
-            // appendToOutput("Empty Answer Bubble for #" + (i+1));
-            System.out.println("The Correct Answer is " + key.get(i));
-            //appendToOutput("The Correct Answer is " + key.get(i));
+
+           // System.out.println("Empty Answer Bubble for #" + (i+1));
+            GUI.appendToOutput("Empty Answer Bubble for #" + (i+1));
+            //System.out.println("The Correct Answer is " + key.get(i));
+           GUI.appendToOutput("The Correct Answer is " + key.get(i));
             //countIncorrect++;
             incorrectQuestions.add((i+1));
         }
         else if(!(key.get(i).equals(input.get(i))))
         {
 
-            System.out.println("# " + (i+1) + " is incorrect");
-            //appendToOutput("# " + (i+1) + " is incorrect");
-            System.out.println("You inputted " + input.get(i));
-            System.out.println("The Correct Answer is " + key.get(i));
+          //  System.out.println("# " + (i+1) + " is incorrect");
+            GUI.appendToOutput("# " + (i+1) + " is incorrect");
+            //System.out.println("You inputted " + input.get(i));
+            GUI.appendToOutput("You inputted " + input.get(i));
+            //System.out.println("The Correct Answer is " + key.get(i));
+            GUI.appendToOutput("The Correct Answer is " + key.get(i));
             //appendToOutput("The Correct Answer is " + key.get(i));
             //countIncorrect++;
             incorrectQuestions.add((i+1));
@@ -214,7 +258,8 @@ public void gradeEng(List<CustomRect> engRect)
     }
     int countCorrect = 75 - incorrectQuestions.size();
     try{
-        BufferedReader b2 = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
+        //BufferedReader b2 = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
+        BufferedReader b2 = new BufferedReader(new FileReader(csvPath));
         while((line = b2.readLine()) != null)
         {
             String [] stringValues = line.split(","); //Takes the values of the CSV File into the array
@@ -226,9 +271,12 @@ public void gradeEng(List<CustomRect> engRect)
             }
             if(intValues.get(0) == countCorrect)
             {
-                System.out.println("You have a total of " + countCorrect + " correct questions");
+                //System.out.println("You have a total of " + countCorrect + " correct questions");
+                GUI.appendToOutput(countCorrect + "/" + "75");
                 // appendToOutput("You have a total of " + countCorrect + " correct questions");
-                System.out.println("Your scaled score is " + intValues.get(1));
+                //System.out.println("Your scaled score is " + intValues.get(1));
+                GUI.appendToOutput("ENGLISH SCALED SCORE " + intValues.get(1));
+                GUI.scores[0] = intValues.get(1);
                 //appendToOutput("Your scaled score is " + intValues.get(1));
                 break;
             }
@@ -272,14 +320,20 @@ public void gradeEng(List<CustomRect> engRect)
 
 public void gradeMath(List<CustomRect> mathRect)
 {
+    //System.out.println(mathRect.size());
     input.clear();
     bubbleCount = 0;
+    temp.clear();
+    startValue = 0;
+count = 0;
+incorrectQuestions.clear();
     //System.out.println(finalRects.size());
     while(count < 60) {
         for (int i = startValue; i < startValue + 5; i++) {
-            temp.add(mathRect.get(i)); //Add the set of 4 values to the temp list
+            temp.add(mathRect.get(i)); //Add the set of 5 values to the temp list
             //System.out.println(temp.get(i));
         }
+        //System.out.println(temp.size());
         for (int i = 0; i < temp.size(); i++)
         {
             //  System.out.print(i + " ");
@@ -324,7 +378,7 @@ public void gradeMath(List<CustomRect> mathRect)
             }
 
         }
-        if(bubbleCount < 0)
+        if(bubbleCount < 1)
         {
             input.add(" ");
         }
@@ -344,7 +398,7 @@ public void gradeMath(List<CustomRect> mathRect)
      */
     int count = 0;
     String[][] math = new String[10][6];
-
+    //System.out.println(input.size());
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 6; j++) {
             math[i][j] = input.get(count);
@@ -389,6 +443,9 @@ public void gradeMath(List<CustomRect> mathRect)
         System.out.println((i+1) + input.get(i));
     }
     */
+    line = "";
+    key.clear();
+    stopCount = 0;
     try{
 
         BufferedReader b = new BufferedReader(new FileReader(csvPath));
@@ -412,12 +469,15 @@ public void gradeMath(List<CustomRect> mathRect)
     {
         // System.out.println(e);
     }
-    for (int i = 0; i < key.size(); i++) {
+    GUI.appendToOutput("MATH");
+    for (int i = 0; i < input.size(); i++) {
 
         if(input.get(i).equals(" ")){
-            System.out.println("Empty Answer Bubble for #" + (i+1));
+            GUI.appendToOutput("Empty Answer Bubble for #" + (i+1));
+            //System.out.println("Empty Answer Bubble for #" + (i+1));
             // appendToOutput("Empty Answer Bubble for #" + (i+1));
-            System.out.println("The Correct Answer is " + key.get(i));
+            //System.out.println("The Correct Answer is " + key.get(i));
+            GUI.appendToOutput("The Correct Answer is " + key.get(i));
             //appendToOutput("The Correct Answer is " + key.get(i));
             //countIncorrect++;
             incorrectQuestions.add((i+1));
@@ -425,16 +485,57 @@ public void gradeMath(List<CustomRect> mathRect)
         else if(!(key.get(i).equals(input.get(i))))
         {
 
-            System.out.println("# " + (i+1) + " is incorrect");
+            //System.out.println("# " + (i+1) + " is incorrect");
+            GUI.appendToOutput("# " + (i+1) + " is incorrect");
             //appendToOutput("# " + (i+1) + " is incorrect");
-            System.out.println("You inputted " + input.get(i));
-            System.out.println("The Correct Answer is " + key.get(i));
+            //System.out.println("You inputted " + input.get(i));
+            GUI.appendToOutput("You inputted " + input.get(i));
+            //System.out.println("The Correct Answer is " + key.get(i));
+            GUI.appendToOutput("The Correct Answer is " + key.get(i));
             //appendToOutput("The Correct Answer is " + key.get(i));
             //countIncorrect++;
             incorrectQuestions.add((i+1));
 
         }
         //System.out.println(key.get(i));
+    }
+    int countCorrect = 60 - incorrectQuestions.size();
+    try{
+        //BufferedReader b2 = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
+        BufferedReader b2 = new BufferedReader(new FileReader(csvPath));
+        while((line = b2.readLine()) != null)
+        {
+            String [] stringValues = line.split(","); //Takes the values of the CSV File into the array
+            //int[] intValues = new int[2];
+            ArrayList<Integer> intValues = new ArrayList<>();
+            for (int i = 4; i < stringValues.length; i++) {
+                // System.out.println(Integer.parseInt(stringValues[i]));
+                if(!(stringValues[2] == null)) {
+                    intValues.add(Integer.parseInt(stringValues[i]));
+                }
+            }
+            if(intValues.get(2) == countCorrect)
+            {
+               // System.out.println("You have a total of " + countCorrect + " correct questions");
+                //GUI.appendToOutput("You have a total of " + countCorrect + " correct questions");
+                GUI.appendToOutput(countCorrect + "/" + "60");
+                // appendToOutput("You have a total of " + countCorrect + " correct questions");
+              //  System.out.println("Your scaled score is " + intValues.get(3));
+                //GUI.appendToOutput("Your scaled score is " + intValues.get(3));
+                GUI.appendToOutput("MATH SCALED SCORE " + intValues.get(3));
+                GUI.scores[1] = intValues.get(3);
+                //appendToOutput("Your scaled score is " + intValues.get(1));
+                break;
+            }
+            //tempCount++;
+            // key.add(values[2]); //2 is the third column which holds the Reading test key
+        }
+
+
+    }
+    catch(Exception e)
+    {
+        System.out.println(e);
     }
 }
 /*
@@ -1114,6 +1215,12 @@ public void gradeMath(List<CustomRect> mathRect)
      */
     public void gradeRead(List<CustomRect> readRect)
     {
+        input.clear();
+        bubbleCount = 0;
+        temp.clear();
+        startValue = 0;
+        count = 0;
+        incorrectQuestions.clear();
         //System.out.println("IN GRADE READ METHOD");
         //System.out.println("readRect size " + readRect.size());
         //System.out.println(readRect.get(0).color.val[0]);
@@ -1243,12 +1350,16 @@ public void gradeMath(List<CustomRect> mathRect)
         {
             // System.out.println(e);
         }
+        //System.out.println("READING");
+        GUI.appendToOutput("READING");
         for (int i = 0; i < key.size(); i++) {
 
             if(input.get(i).equals(" ")){
-                System.out.println("Empty Answer Bubble for #" + (i+1));
+                //System.out.println("Empty Answer Bubble for #" + (i+1));
+                GUI.appendToOutput("Empty Answer Bubble for #" + (i+1));
                 // appendToOutput("Empty Answer Bubble for #" + (i+1));
-                System.out.println("The Correct Answer is " + key.get(i));
+                //System.out.println("The Correct Answer is " + key.get(i));
+                GUI.appendToOutput("The Correct Answer is " + key.get(i));
                 //appendToOutput("The Correct Answer is " + key.get(i));
                 //countIncorrect++;
                 incorrectQuestions.add((i+1));
@@ -1256,9 +1367,13 @@ public void gradeMath(List<CustomRect> mathRect)
             else if(!(key.get(i).equals(input.get(i))))
             {
 
-                System.out.println("# " + (i+1) + " is incorrect");
+                //System.out.println("# " + (i+1) + " is incorrect");
+                GUI.appendToOutput("# " + (i+1) + " is incorrect");
                 //appendToOutput("# " + (i+1) + " is incorrect");
-                System.out.println("The Correct Answer is " + key.get(i));
+                //System.out.println("You inputted " + input.get(i));
+                GUI.appendToOutput("You inputted " + input.get(i));
+                //System.out.println("The Correct Answer is " + key.get(i));
+                GUI.appendToOutput("The Correct Answer is " + key.get(i));
                 //appendToOutput("The Correct Answer is " + key.get(i));
                 //countIncorrect++;
                 incorrectQuestions.add((i+1));
@@ -1268,7 +1383,8 @@ public void gradeMath(List<CustomRect> mathRect)
         }
         int countCorrect = 40 - incorrectQuestions.size();
         try{
-            BufferedReader b2 = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
+           // BufferedReader b2 = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
+            BufferedReader b2 = new BufferedReader(new FileReader(csvPath));
             while((line = b2.readLine()) != null)
             {
                 String [] stringValues = line.split(","); //Takes the values of the CSV File into the array
@@ -1280,9 +1396,223 @@ public void gradeMath(List<CustomRect> mathRect)
                 }
                 if(intValues.get(4) == countCorrect)
                 {
-                    System.out.println("You have a total of " + countCorrect + " correct questions");
+                    //System.out.println("You have a total of " + countCorrect + " correct questions");
+                    //GUI.appendToOutput("You have a total of " + countCorrect + " correct questions");
+                    GUI.appendToOutput(countCorrect + "/" + "40");
                     // appendToOutput("You have a total of " + countCorrect + " correct questions");
-                    System.out.println("Your scaled score is " + intValues.get(5));
+                    //System.out.println("Your scaled score is " + intValues.get(5));
+                    //GUI.appendToOutput("Your scaled score is " + intValues.get(5));
+                    GUI.appendToOutput("READING SCALED SCORE " + intValues.get(5));
+                    GUI.scores[2] = intValues.get(5);
+                    //appendToOutput("Your scaled score is " + intValues.get(1));
+                    break;
+                }
+                //tempCount++;
+                // key.add(values[2]); //2 is the third column which holds the Reading test key
+            }
+
+
+        }
+        catch(Exception e)
+        {
+            System.out.println(e);
+        }
+    }
+
+    public void gradeSci(List<CustomRect> sciRect)
+    {
+        input.clear();
+        bubbleCount = 0;
+        temp.clear();
+        startValue = 0;
+        count = 0;
+        incorrectQuestions.clear();
+        //System.out.println("IN GRADE READ METHOD");
+        //System.out.println("readRect size " + readRect.size());
+        //System.out.println(readRect.get(0).color.val[0]);
+        //System.out.println(color.size());
+        while(count < 40) {
+            for (int i = startValue; i < startValue + 4; i++) {
+                temp.add(sciRect.get(i)); //Add the set of 4 values to the temp list
+
+            }
+            for (int i = 0; i < temp.size(); i++)
+            {
+                //  System.out.print(i + " ");
+
+                if(isBubbleFilled(temp.get(i).color) == true)
+                {
+                    isBubbled = true;
+                    // System.out.print(isBubbleFilled(temp.get(i)) + " ");
+                    if(i == 0)
+                    {
+                        input.add("A");
+                        //System.out.println(count + 1 + " a");
+                    }
+                    else if(i == 1)
+                    {
+                        input.add("B");
+                        //System.out.println(count + 1 + " b");
+                    }
+                    else if(i == 2)
+                    {
+                        input.add("C");
+                        //System.out.println(count + 1+ " c");
+                    }
+                    else if(i == 3)
+                    {
+                        input.add("D");
+                        //System.out.println(count + 1 + " d");
+                    }
+
+                }
+
+            }
+            if(isBubbled == false)
+            {
+                input.add(" ");
+            }
+            isBubbled = false;
+            // System.out.println();
+            temp.clear();
+            count++;
+            startValue = startValue+4;
+            // System.out.println("Start Value " + startValue);
+
+        }
+        inputValue = 0;
+        String[][] Reading = new String[7][6];
+        for (int i = 0; i < 7; i++)
+        {
+            for (int j = 0; j < 6; j++)
+            {
+                if (shouldSkipSpace(i, j,"sci")) {
+                    continue;  // Skip to the next iteration
+                }
+
+                // Access the space and assign a value
+                Reading[i][j] = input.get(inputValue);
+                inputValue++;
+            }
+
+        }
+        inputValue = 0;
+        input.clear();
+        for (int j = 0; j < Reading[0].length; j++) {
+            for (int i = 0; i < Reading.length; i++) {
+                // Check if the space should be skipped
+                if (shouldSkipSpace(i, j,"sci")) {
+                    continue;  // Skip to the next iteration
+                }
+
+                // Access the space and print its value
+                //System.out.println(Reading[i][j]);
+                input.add(Reading[i][j]);
+            }
+        }
+        for (int i = 0; i < 40; i++)
+        {
+            if( !(i % 2 == 0))//It will be odd since ArrayList starts from 0
+            {
+                if(input.get(i).equals("A"))
+                {
+                    input.set(i, "F");//Replace all of the odd(second values on paper) with F
+                }
+                else if(input.get(i).equals("B"))
+                {
+                    input.set(i, "G");
+                }
+                else if(input.get(i).equals("C"))
+                {
+                    input.set(i, "H");
+                }
+                else if(input.get(i).equals("D"))
+                {
+                    input.set(i, "J");
+                }
+            }
+        }
+        //NOW THE LIST IS READY FOR GRADING
+        line = "";
+        key.clear();
+        stopCount = 0;
+        try{
+
+            BufferedReader b = new BufferedReader(new FileReader(csvPath));
+            while((line = b.readLine()) != null)
+            {
+                String [] values = line.split(","); //Takes the values of the CSV File into the array
+                //Takes and splits by column so values[0] is value in the first column of that line
+                //System.out.println(tempCount + " " + values[2]);
+                if(stopCount > 39) {
+                    break;
+                }
+                key.add(values[3]);
+                //tempCount++;
+                // key.add(values[2]); //2 is the third column which holds the Reading test key
+                stopCount++;
+            }
+
+
+        }
+        catch(Exception e)
+        {
+            // System.out.println(e);
+        }
+        //System.out.println("SCIENCE");
+        GUI.appendToOutput("SCIENCE");
+        for (int i = 0; i < input.size(); i++) {
+
+            if(input.get(i).equals(" ")){
+                //System.out.println("Empty Answer Bubble for #" + (i+1));
+                GUI.appendToOutput("Empty Answer Bubble for #" + (i+1));
+                // appendToOutput("Empty Answer Bubble for #" + (i+1));
+                //System.out.println("The Correct Answer is " + key.get(i));
+                GUI.appendToOutput("The Correct Answer is " + key.get(i));
+                //appendToOutput("The Correct Answer is " + key.get(i));
+                //countIncorrect++;
+                incorrectQuestions.add((i+1));
+            }
+            else if(!(input.get(i).equals(key.get(i))))
+            {
+
+                //System.out.println("# " + (i+1) + " is incorrect");
+                GUI.appendToOutput("# " + (i+1) + " is incorrect");
+                //appendToOutput("# " + (i+1) + " is incorrect");
+                //System.out.println("You inputted " + input.get(i));
+                GUI.appendToOutput("You inputted " + input.get(i));
+                //System.out.println("The Correct Answer is " + key.get(i));
+                GUI.appendToOutput("The Correct Answer is " + key.get(i));
+                //appendToOutput("The Correct Answer is " + key.get(i));
+                //countIncorrect++;
+                incorrectQuestions.add((i+1));
+
+            }
+            //System.out.println(key.get(i));
+        }
+        int countCorrect = 40 - incorrectQuestions.size();
+        try{
+            // BufferedReader b2 = new BufferedReader(new FileReader("C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv"));
+            BufferedReader b2 = new BufferedReader(new FileReader(csvPath));
+            while((line = b2.readLine()) != null)
+            {
+                String [] stringValues = line.split(","); //Takes the values of the CSV File into the array
+                //int[] intValues = new int[2];
+                ArrayList<Integer> intValues = new ArrayList<>();
+                for (int i = 4; i < stringValues.length; i++) {
+                    // System.out.println(Integer.parseInt(stringValues[i]));
+                    intValues.add(Integer.parseInt(stringValues[i]));
+                }
+                if(intValues.get(6) == countCorrect)
+                {
+                   // System.out.println("You have a total of " + countCorrect + " correct questions");
+                    //GUI.appendToOutput("You have a total of " + countCorrect + " correct questions");
+                    GUI.appendToOutput(countCorrect + "/" + "40");
+                    // appendToOutput("You have a total of " + countCorrect + " correct questions");
+                   // System.out.println("Your scaled score is " + intValues.get(7));
+                    //GUI.appendToOutput("Your scaled score is " + intValues.get(7));
+                    GUI.appendToOutput("SCIENCE SCALED SCORE " + intValues.get(7));
+                    GUI.scores[3] = intValues.get(7);
                     //appendToOutput("Your scaled score is " + intValues.get(1));
                     break;
                 }
