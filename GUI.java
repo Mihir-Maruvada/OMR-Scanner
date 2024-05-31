@@ -16,6 +16,7 @@ import org.opencv.core.*;
 import java.util.Iterator;
 
 
+
 public class GUI
 {
     private static JTextArea outputTextArea;
@@ -198,9 +199,9 @@ private static JPanel topPanel;
                 }
 
                  */
-                imagePath[0] = "C:\\Users\\mihir\\Desktop\\English_and_Math.jpg";
-                imagePath[1] = "C:\\Users\\mihir\\Desktop\\Reading_and_Science.jpg";
-                csvPath = "C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv";
+                //imagePath[0] = "C:\\Users\\mihir\\Desktop\\English_and_Math.jpg";
+                //imagePath[1] = "C:\\Users\\mihir\\Desktop\\Reading_and_Science.jpg";
+                //csvPath = "C:\\Users\\mihir\\Documents\\CSV\\E25_KEY5.csv";
                 engMathGUI();
             }
         });
@@ -255,6 +256,7 @@ private static JPanel topPanel;
         frame.repaint();
         String path = imagePath[0];
         //System.out.println(imagePath[0]);
+
         image = Imgcodecs.imread(path);
 
         Mat gray = new Mat();
@@ -287,6 +289,7 @@ private static JPanel topPanel;
                 }
             }
         }
+
         //Now sort the Rectangles first by y(to get the row) and then by x in that row(to get it in READING ORDER)
         //We will use the y value of the prevous rectangle and the y value of the current rectangle and see if their differece is within a range
         //This range will tell us that those rectangels are in the same row.
@@ -320,8 +323,7 @@ private static JPanel topPanel;
         result = image.clone();
         finalRects = new ArrayList<>();
         //int count = 0;
-        for (CustomRect rect : sortedRects)
-        {
+        for (CustomRect rect : sortedRects) {
             // Calculate filled percentage
             double filledPercentage = calculateFilledPercentage(rect, binary);
 
@@ -361,7 +363,7 @@ private static JPanel topPanel;
             org.opencv.core.Point topLeft = new org.opencv.core.Point(rect.x, rect.y);
             org.opencv.core.Point bottomRight = new org.opencv.core.Point(rect.x + rect.width, rect.y + rect.height);
             Imgproc.rectangle(result, topLeft, bottomRight, color, 2);
-
+        }
             //displayImage(result);LAST USAGE(IN CASE NEED TO UNCOMMENT)
 
             //The code below pauses for a short duration so that we can see the rectangles being drawn step by step
@@ -383,7 +385,7 @@ private static JPanel topPanel;
             }
 
              */
-        }
+
 
         /*
         //SEE if the colors are correct.
